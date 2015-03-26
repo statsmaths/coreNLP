@@ -3,6 +3,7 @@
 S3method(print,annotation)
 export(annotateFile)
 export(annotateString)
+export(getCoreference)
 export(getDependency)
 export(getParse)
 export(getSentiment)

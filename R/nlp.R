@@ -97,10 +97,11 @@ annotateString = function(text, format=c("obj", "xml", "text"), outputFile=NA,
     rJava::.jcall(volatiles$cNLP, "V", "prettyPrint", anno, .jnew("java.io.PrintWriter", tf <- tempfile()))
     on.exit(file.remove(tf))
     out = readLines(tf)
+  } else {
+    d = rJava::.jcall(volatiles$xmlOut, "Lnu/xom/Document;", "annotationToDoc", anno, volatiles$cNLP)
+    xml = rJava::.jcall(d, "Ljava/lang/String;", "toXML")
+    if (format == "xml") out = xml else out = parseAnnoXML(xml)
   }
-  d = rJava::.jcall(volatiles$xmlOut, "Lnu/xom/Document;", "annotationToDoc", anno, volatiles$cNLP)
-  xml = rJava::.jcall(d, "Ljava/lang/String;", "toXML")
-  if (format == "xml") out = xml else out = parseAnnoXML(xml)
 
   # Return the output if asked for asked for; otherwise just write to disk
   if (is.na(outputFile)) return(out)
@@ -159,10 +160,11 @@ annotateFile = function(file, format=c("obj", "xml", "text"), outputFile=NA,
     rJava::.jcall(volatiles$cNLP, "V", "prettyPrint", anno, .jnew("java.io.PrintWriter", tf <- tempfile()))
     on.exit(file.remove(tf))
     out = readLines(tf)
+  } else {
+    d = rJava::.jcall(volatiles$xmlOut, "Lnu/xom/Document;", "annotationToDoc", anno, volatiles$cNLP)
+    xml = rJava::.jcall(d, "Ljava/lang/String;", "toXML")
+    if (format == "xml") out = xml else out = parseAnnoXML(xml)
   }
-  d = rJava::.jcall(volatiles$xmlOut, "Lnu/xom/Document;", "annotationToDoc", anno, volatiles$cNLP)
-  xml = rJava::.jcall(d, "Ljava/lang/String;", "toXML")
-  if (format == "xml") out = xml else out = parseAnnoXML(xml)
 
   # Return the output if asked for asked for; otherwise just write to disk
   if (is.na(outputFile)) return(out)
@@ -213,14 +215,14 @@ getParse = function(annotation) {
   annotation$parse
 }
 
-#' Get Coreferences
+#' Get Dependencies
 #'
 #' Returns a data frame of the coreferences of an annotation
 #'
 #' @param annotation    an annotation object
 #' @param type          the class of coreference desired
 #' @export
-getDependency = function(annotation, type=c("basic","collapsed","CCprocessed")) {
+getDependency = function(annotation, type=c("CCprocessed","basic","collapsed")) {
   type = match.arg(type)
   if (type == "basic") annotation$basicDep
   else if (type == "collapsed") annotation$collapsedDep
@@ -235,6 +237,16 @@ getDependency = function(annotation, type=c("basic","collapsed","CCprocessed")) 
 #' @export
 getSentiment = function(annotation) {
   annotation$sentiment
+}
+
+#' Get Coreference
+#'
+#' Returns a dataframe containing all coreferences detected in the text.
+#'
+#' @param annotation    an annotation object
+#' @export
+getCoreference = function(annotation) {
+  annotation$coref
 }
 
 #' Load CoreNLP XML file
@@ -267,10 +279,13 @@ loadXMLAnnotation = function(file, encoding="unknown") {
 #' @importFrom   plyr rbind.fill
 #' @param xml    character vector containing the xml file from an annotation
 parseAnnoXML = function(xml) {
-  xml = XML::xmlRoot(XML::xmlParse(xml))[[1]][[1]]
+  xml = XML::xmlRoot(XML::xmlParse(xml))[[1]]
+  coref = xml[[2]]
+  xml = xml[[1]]
   sentences = XML::xmlChildren(xml)
 
-  out = list(token=NULL,parse=NULL,basicDep=NULL,collapsedDep=NULL,collapsedProcDep=NULL)
+  out = list(token=NULL,parse=NULL,basicDep=NULL,collapsedDep=NULL,
+              collapsedProcDep=NULL, coref=NULL)
 
   for (i in 1:length(sentences)) {
     sent = sentences[[i]]
@@ -309,6 +324,15 @@ parseAnnoXML = function(xml) {
     names(df) = names(sm)
     out$sentiment = plyr::rbind.fill(out$sentiment, df)
   }
+
+  if (!is.null(coref)) {
+    coref = XML::xmlChildren(coref)
+    for (corefId in 1:length(coref)) {
+      df = data.frame(corefIf=corefId, XML::xmlToDataFrame(coref[[corefId]], stringsAsFactors=FALSE))
+      out$coref = plyr::rbind.fill(out$coref, df)
+    }
+  }
+
 
   class(out) = "annotation"
   out

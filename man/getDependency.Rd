@@ -2,9 +2,9 @@
 % Please edit documentation in R/nlp.R
 \name{getDependency}
 \alias{getDependency}
-\title{Get Coreferences}
+\title{Get Dependencies}
 \usage{
-getDependency(annotation, type = c("basic", "collapsed", "CCprocessed"))
+getDependency(annotation, type = c("CCprocessed", "basic", "collapsed"))
 }
 \arguments{
 \item{annotation}{an annotation object}
