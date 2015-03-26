@@ -1,5 +1,5 @@
 # coreNLP
-To download the R library and coorisponding CoreNLP java library, 
+To download the R library and corresponding CoreNLP java library, 
 run the following in R:
 ```{r}
 devtools::install_github("statsmaths/coreNLP")
