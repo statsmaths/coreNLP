@@ -30,6 +30,8 @@ the java engine is already started by a seperate process.}
 \description{
 This must be run prior to calling any other CoreNLP
 functions. It may be called multiple times in order
-to specify a different parameter set.
+to specify a different parameter set, but note that
+if you use a different configuration during the same
+R session it must have a unique name.
 }
 

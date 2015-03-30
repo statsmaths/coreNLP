@@ -6,7 +6,9 @@ volatiles = new.env(parent=emptyenv())
 #'
 #' This must be run prior to calling any other CoreNLP
 #' functions. It may be called multiple times in order
-#' to specify a different parameter set.
+#' to specify a different parameter set, but note that
+#' if you use a different configuration during the same
+#' R session it must have a unique name.
 #'
 #' @importFrom           rJava .jinit .jaddClassPath .jcall .jnew
 #' @param libLoc         a string giving the location of the CoreNLP java
@@ -83,6 +85,9 @@ initCoreNLP = function(libLoc, parameterFile, mem="4g") {
 #' @export
 annotateString = function(text, format=c("obj", "xml", "text"), outputFile=NA,
                           includeXSL=FALSE) {
+  if (is.null(volatiles$cNLP))
+    stop("Must initilize with 'initCoreNLP'!")
+
   format = match.arg(format)
   if (length(text) > 1L) text = paste(text,collapse="\n")
   if (!is.na(outputFile) & format == "obj") {
@@ -137,6 +142,10 @@ annotateString = function(text, format=c("obj", "xml", "text"), outputFile=NA,
 #' @export
 annotateFile = function(file, format=c("obj", "xml", "text"), outputFile=NA,
                             includeXSL=FALSE) {
+
+  if (is.null(volatiles$cNLP))
+    stop("Must initilize with 'initCoreNLP'!")
+
   # Processing inputs
   format = match.arg(format)
   if (!is.na(outputFile) & format == "obj") {
@@ -224,9 +233,15 @@ getParse = function(annotation) {
 #' @export
 getDependency = function(annotation, type=c("CCprocessed","basic","collapsed")) {
   type = match.arg(type)
-  if (type == "basic") annotation$basicDep
+  dep <- if (type == "basic") annotation$basicDep
   else if (type == "collapsed") annotation$collapsedDep
   else if (type == "CCprocessed") annotation$collapsedProcDep
+
+  dep$govIndex = match(paste0(dep$sentence,"-",dep$governorIdx),
+                     paste0(annotation$token$sentence,"-",annotation$token$id))
+  dep$depIndex = match(paste0(dep$sentence,"-",dep$dependentIdx),
+                     paste0(annotation$token$sentence,"-",annotation$token$id))
+  dep
 }
 
 #' Get Sentiment scores
@@ -246,7 +261,12 @@ getSentiment = function(annotation) {
 #' @param annotation    an annotation object
 #' @export
 getCoreference = function(annotation) {
-  annotation$coref
+  coref = annotation$coref[,-grep("text",names(annotation$coref))]
+  coref$startIndex = match(paste0(coref$sentence,"-",coref$start),
+                     paste0(annotation$token$sentence,"-",annotation$token$id))
+  coref$endIndex = match(paste0(coref$sentence,"-",as.numeric(coref$end)-1),
+                     paste0(annotation$token$sentence,"-",annotation$token$id))
+  coref
 }
 
 #' Load CoreNLP XML file
@@ -270,6 +290,36 @@ loadXMLAnnotation = function(file, encoding="unknown") {
   output
 }
 
+#' Convert Penn TreeBank POS to Universal Tagset
+#'
+#' Maps a character string of English Penn TreeBank
+#' part of speech tags into the universal tagset
+#' codes. This provides a reduced set of tags (12), and
+#' a better cross-linguist model of speech.
+#'
+#' @param pennPOS   a character vector of penn tags to match
+#' @export
+universalTagset = function(pennPOS) {
+  mtab = structure(c("!", "#", "$", "''", "(", ")", ",", "-LRB-",
+      "-RRB-",  ".", ":", "?", "CC", "CD", "CD|RB", "DT", "EX", "FW", "IN",
+      "IN|RP",  "JJ", "JJR", "JJRJR", "JJS", "JJ|RB", "JJ|VBG", "LS", "MD", "NN",
+      "NNP", "NNPS", "NNS", "NN|NNS", "NN|SYM", "NN|VBG", "NP", "PDT",  "POS", "PRP",
+      "PRP$", "PRP|VBP", "PRT", "RB", "RBR", "RBS", "RB|RP",  "RB|VBG", "RN", "RP", "SYM",
+      "TO", "UH", "VB", "VBD", "VBD|VBN",  "VBG", "VBG|NN", "VBN", "VBP", "VBP|TO",
+      "VBZ", "VP", "WDT",  "WH", "WP", "WP$", "WRB", "``", ".", ".", ".", ".", ".",
+      ".",  ".", ".", ".", ".", ".", ".", "CONJ", "NUM", "X", "DET", "DET",  "X",
+      "ADP", "ADP", "ADJ", "ADJ", "ADJ", "ADJ", "ADJ", "ADJ",  "X", "VERB", "NOUN",
+      "NOUN", "NOUN", "NOUN", "NOUN", "NOUN",  "NOUN", "NOUN", "DET", "PRT", "PRON",
+      "PRON", "PRON", "PRT",  "ADV", "ADV", "ADV", "ADV", "ADV", "X", "PRT", "X",
+      "PRT", "X",  "VERB", "VERB", "VERB", "VERB", "VERB", "VERB", "VERB", "VERB",
+      "VERB", "VERB", "DET", "X", "PRON", "PRON", "ADV", "."), .Dim = c(68L,  2L))
+
+  index = match(pennPOS, mtab[,1])
+  output = rep("X", length(pennPOS))
+  output[!is.na(index)] = mtab[index[!is.na(index)],2]
+  output
+}
+
 #' Parse annotation xml
 #'
 #' Returns an annotation object from a character vector containing
@@ -289,33 +339,34 @@ parseAnnoXML = function(xml) {
 
   for (i in 1:length(sentences)) {
     sent = sentences[[i]]
-    df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[1]], stringsAsFactors=FALSE))
+    df = data.frame(sentence=i, id=sapply(XML::xmlChildren(sent[[1L]]),function(v) xmlAttrs(v)[1]),
+                    XML::xmlToDataFrame(sent[[1]], stringsAsFactors=FALSE))
     out$token = plyr::rbind.fill(out$token, df)
 
     if (!is.null(sent[[2L]]))
       out$parse = c(out$parse, XML::xmlValue(sent[[2]]))
 
-    if (!is.null(sent[[3L]])) {
+    if (!is.null(sent[[3L]]) && length(XML::xmlToDataFrame(sent[[3L]]))) {
       df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[3L]],stringsAsFactors=FALSE),
-                type=sapply(XML::xmlChildren(sent[[3L]]),xmlAttrs),
-                governorIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[1]])),
-                dependentIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[2]])))
+                type=sapply(XML::xmlChildren(sent[[3L]]),XML::xmlAttrs),
+                governorIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
+                dependentIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[2]])[1]))
       out$basicDep = plyr::rbind.fill(out$basicDep, df)
     }
 
-    if (!is.null(sent[[4L]])) {
+    if (!is.null(sent[[4L]]) && length(XML::xmlToDataFrame(sent[[4L]]))) {
       df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[4L]],stringsAsFactors=FALSE),
                 type=sapply(XML::xmlChildren(sent[[4L]]),XML::xmlAttrs),
-                governorIdx=sapply(XML::xmlChildren(sent[[4L]]), function(v) XML::xmlAttrs(v[[1]])),
-                dependentIdx=sapply(XML::xmlChildren(sent[[4L]]), function(v) XML::xmlAttrs(v[[2]])))
+                governorIdx=sapply(XML::xmlChildren(sent[[4L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
+                dependentIdx=sapply(XML::xmlChildren(sent[[4L]]), function(v) XML::xmlAttrs(v[[2]])[1]))
       out$collapsedDep = plyr::rbind.fill(out$collapsedDep, df)
     }
 
-    if (!is.null(sent[[5L]])) {
+    if (!is.null(sent[[5L]]) && length(XML::xmlToDataFrame(sent[[5L]]))) {
       df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[5L]],stringsAsFactors=FALSE),
                 type=sapply(XML::xmlChildren(sent[[5L]]),xmlAttrs),
-                governorIdx=sapply(XML::xmlChildren(sent[[5L]]), function(v) XML::xmlAttrs(v[[1]])),
-                dependentIdx=sapply(XML::xmlChildren(sent[[5L]]), function(v) XML::xmlAttrs(v[[2]])))
+                governorIdx=sapply(XML::xmlChildren(sent[[5L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
+                dependentIdx=sapply(XML::xmlChildren(sent[[5L]]), function(v) XML::xmlAttrs(v[[2]])[1]))
       out$collapsedProcDep = plyr::rbind.fill(out$collapsedProcDep, df)
     }
 
@@ -328,7 +379,7 @@ parseAnnoXML = function(xml) {
   if (!is.null(coref)) {
     coref = XML::xmlChildren(coref)
     for (corefId in 1:length(coref)) {
-      df = data.frame(corefIf=corefId, XML::xmlToDataFrame(coref[[corefId]], stringsAsFactors=FALSE))
+      df = data.frame(corefId=corefId, XML::xmlToDataFrame(coref[[corefId]], stringsAsFactors=FALSE))
       out$coref = plyr::rbind.fill(out$coref, df)
     }
   }

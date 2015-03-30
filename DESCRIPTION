@@ -11,4 +11,4 @@ Description: Provides a minimal interface for applying
  detection, and sentiment analysis.
 License: GPL-2
 SystemRequirements: java
-Depends: rJava, plyr, XML
+Imports: rJava, plyr, XML, plotrix
