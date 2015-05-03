@@ -4,7 +4,7 @@
 \alias{initCoreNLP}
 \title{Initialize the CoreNLP java object}
 \usage{
-initCoreNLP(libLoc, parameterFile, mem = "4g")
+initCoreNLP(libLoc, parameterFile, mem = "4g", annotators)
 }
 \arguments{
 \item{libLoc}{a string giving the location of the CoreNLP java
@@ -26,6 +26,11 @@ package. On a 32bit machine, where this is not possible, setting
 "1800m" may also work. This option will only have an effect the time
 \code{initCoreNLP} is called, and also will not have an effect if
 the java engine is already started by a seperate process.}
+
+\item{annotators}{optional character string. When parameterFile is missing, this
+is taken to be the list of annotators that you want to run. Either
+a length one character vector with annotator names seperated by
+commas, or a character vector with one annotator per element.}
 }
 \description{
 This must be run prior to calling any other CoreNLP

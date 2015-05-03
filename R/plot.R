@@ -30,6 +30,8 @@ plot.annotation = function(x,y=1L,...) {
 
   tkn$CharacterOffsetBegin = as.numeric(tkn$CharacterOffsetBegin)
   tkn$CharacterOffsetEnd = as.numeric(tkn$CharacterOffsetEnd)
+  tkn$CharacterOffsetBegin = tkn$CharacterOffsetBegin - min(tkn$CharacterOffsetBegin) + 1
+  tkn$CharacterOffsetEnd = tkn$CharacterOffsetEnd - min(tkn$CharacterOffsetEnd) + 1
   dep = dep[dep$type != "root",,drop=FALSE]
   dep$governorIdx = as.numeric(as.character(dep$governorIdx))
   dep$dependentIdx = as.numeric(as.character(dep$dependentIdx))

@@ -12,8 +12,9 @@ volatiles = new.env(parent=emptyenv())
 #'
 #' @importFrom           rJava .jinit .jaddClassPath .jcall .jnew
 #' @param libLoc         a string giving the location of the CoreNLP java
-#'                       files. This should point to a directory which contains, for
-#'                       examples the file "stanford-corenlp-*.jar", where "*" is the
+#'                       files. This should point to a directory which
+#'                       contains, for
+#'                       example the file "stanford-corenlp-*.jar", where "*" is the
 #'                       version number. If missing, the function will try to find the
 #'                       library in the environment variable CORENLP_HOME, and otherwise
 #'                       will fail.
@@ -25,13 +26,22 @@ volatiles = new.env(parent=emptyenv())
 #'                       engine. For example, "6g" assigned 6 gigabytes of memory. At least
 #'                       2 gigabytes are recommended at a minimum for running the CoreNLP
 #'                       package. On a 32bit machine, where this is not possible, setting
-#'                       "1800m" may also work. This option will only have an effect the time
-#'                       \code{initCoreNLP} is called, and also will not have an effect if
+#'                       "1800m" may also work. This option will only have an effect the first
+#'                       time \code{initCoreNLP} is called, and also will not have an effect if
 #'                       the java engine is already started by a seperate process.
+#' @param annotators     optional character string. When parameterFile is missing, this
+#'                       is taken to be the list of annotators that you want to run. Either
+#'                       a length one character vector with annotator names seperated by
+#'                       commas, or a character vector with one annotator per element.
 #' @export
-initCoreNLP = function(libLoc, parameterFile, mem="4g") {
+initCoreNLP = function(libLoc, parameterFile, mem="4g", annotators) {
   # Find location of the CoreNLP Libraries
-  if (missing(libLoc)) libLoc = Sys.getenv("CORENLP_HOME")
+  if (missing(libLoc)) {
+    libLoc = paste0(system.file("extdata",package="coreNLP"),
+                    "/stanford-corenlp-full-2015-01-29")
+    if (!file.exists(libLoc))
+      stop("Please run downloadCoreNLP() in order to install required jar files.")
+  }
   if (!file.exists(libLoc) || !file.info(libLoc)$isdir)
     stop("libLoc does not point to an existing directory path")
   path = Sys.glob(paste0(libLoc,"/*.jar"))
@@ -57,7 +67,15 @@ initCoreNLP = function(libLoc, parameterFile, mem="4g") {
   if (!is.null(volatiles$cNLP))
     rJava::.jcall(volatiles$cNLP, "V", "clearAnnotatorPool")
 
-  volatiles$cNLP = rJava::.jnew("edu.stanford.nlp.pipeline.StanfordCoreNLP", basename(path))
+  if (!missing(annotators) & missing(parameterFile)) {
+    annotators = paste(annotators,collapse=",")
+    prop = rJava::.jnew("java.util.Properties")
+    rJava::.jcall(prop, "Ljava/lang/Object;", "setProperty", "annotators", annotators)
+    volatiles$cNLP = rJava::.jnew("edu.stanford.nlp.pipeline.StanfordCoreNLP", prop)
+  } else {
+    volatiles$cNLP = rJava::.jnew("edu.stanford.nlp.pipeline.StanfordCoreNLP", basename(path))
+  }
+
   volatiles$xmlOut = rJava::.jnew("edu.stanford.nlp.pipeline.XMLOutputter")
 }
 
@@ -195,7 +213,7 @@ annotateFile = function(file, format=c("obj", "xml", "text"), outputFile=NA,
 print.annotation = function(x, ...) {
   cat("\nA CoreNLP Annotation:\n")
   cat("  num. sentences:", x$token[nrow(x$token),1], "\n")
-  cat("  num. lemmas:", nrow(x[[1]]), "\n")
+  cat("  num. tokens:", nrow(x[[1]]), "\n")
   cat("\n")
   invisible(x)
 }
@@ -326,7 +344,6 @@ universalTagset = function(pennPOS) {
 #' the xml. Not exported; use \code{loadXMLAnnotation} instead.
 #'
 #' @importFrom   XML xmlRoot xmlParse xmlToDataFrame xmlChildren xmlAttrs
-#' @importFrom   plyr rbind.fill
 #' @param xml    character vector containing the xml file from an annotation
 parseAnnoXML = function(xml) {
   xml = XML::xmlRoot(XML::xmlParse(xml))[[1]]
@@ -337,11 +354,28 @@ parseAnnoXML = function(xml) {
   out = list(token=NULL,parse=NULL,basicDep=NULL,collapsedDep=NULL,
               collapsedProcDep=NULL, coref=NULL)
 
+  if (length(sentences)==0L) {
+    class(out) = "annotation"
+    return(out)
+  }
+
+  tokenNames = c("sentence", "id", "word", "lemma", "CharacterOffsetBegin",
+                 "CharacterOffsetEnd", "POS", "NER", "Speaker")
+  depNames = c("sentence", "governor", "dependent", "type", "governorIdx",
+               "dependentIdx")
+  corefNames = c("corefId", "sentence", "start", "end", "head", "text")
+  sentNames = c("id", "sentimentValue", "sentiment")
+
   for (i in 1:length(sentences)) {
     sent = sentences[[i]]
-    df = data.frame(sentence=i, id=sapply(XML::xmlChildren(sent[[1L]]),function(v) xmlAttrs(v)[1]),
-                    XML::xmlToDataFrame(sent[[1]], stringsAsFactors=FALSE))
-    out$token = plyr::rbind.fill(out$token, df)
+    df = data.frame(sentence=i, id=sapply(XML::xmlChildren(sent[[1L]]),function(v) XML::xmlAttrs(v)[1]),
+                    XML::xmlToDataFrame(sent[[1]], stringsAsFactors=FALSE), stringsAsFactors=FALSE)
+
+    index = match(tokenNames, names(df))
+    if (length(index) != ncol(df)) df = df[,index[!is.na(index)]]
+    if (any(is.na(index))) df = fillDF(df, tokenNames)
+
+    out$token = rbind(out$token, df)
 
     if (!is.null(sent[[2L]]))
       out$parse = c(out$parse, XML::xmlValue(sent[[2]]))
@@ -350,8 +384,14 @@ parseAnnoXML = function(xml) {
       df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[3L]],stringsAsFactors=FALSE),
                 type=sapply(XML::xmlChildren(sent[[3L]]),XML::xmlAttrs),
                 governorIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
-                dependentIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[2]])[1]))
-      out$basicDep = plyr::rbind.fill(out$basicDep, df)
+                dependentIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[2]])[1]),
+                stringsAsFactors=FALSE)
+
+      index = match(depNames, names(df))
+      if (length(index) != ncol(df)) df = df[,index[!is.na(index)]]
+      if (any(is.na(index))) df = fillDF(df, depNames)
+
+      out$basicDep = rbind(out$basicDep, df)
     }
 
     if (!is.null(sent[[4L]]) && length(XML::xmlToDataFrame(sent[[4L]]))) {
@@ -359,32 +399,86 @@ parseAnnoXML = function(xml) {
                 type=sapply(XML::xmlChildren(sent[[4L]]),XML::xmlAttrs),
                 governorIdx=sapply(XML::xmlChildren(sent[[4L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
                 dependentIdx=sapply(XML::xmlChildren(sent[[4L]]), function(v) XML::xmlAttrs(v[[2]])[1]))
-      out$collapsedDep = plyr::rbind.fill(out$collapsedDep, df)
+
+      index = match(depNames, names(df))
+      if (length(index) != ncol(df)) df = df[,index[!is.na(index)]]
+      if (any(is.na(index))) df = fillDF(df, depNames)
+
+      out$collapsedDep = rbind(out$collapsedDep, df)
     }
 
     if (!is.null(sent[[5L]]) && length(XML::xmlToDataFrame(sent[[5L]]))) {
       df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[5L]],stringsAsFactors=FALSE),
-                type=sapply(XML::xmlChildren(sent[[5L]]),xmlAttrs),
+                type=sapply(XML::xmlChildren(sent[[5L]]),XML::xmlAttrs),
                 governorIdx=sapply(XML::xmlChildren(sent[[5L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
                 dependentIdx=sapply(XML::xmlChildren(sent[[5L]]), function(v) XML::xmlAttrs(v[[2]])[1]))
-      out$collapsedProcDep = plyr::rbind.fill(out$collapsedProcDep, df)
+
+      index = match(depNames, names(df))
+      if (length(index) != ncol(df)) df = df[,index[!is.na(index)]]
+      if (any(is.na(index))) df = fillDF(df, depNames)
+
+      out$collapsedProcDep = rbind(out$collapsedProcDep, df)
     }
 
     sm = XML::xmlAttrs(sent)
-    df = data.frame(matrix(sm,nrow=1))
+    df = data.frame(matrix(sm,nrow=1),stringsAsFactors=FALSE)
     names(df) = names(sm)
-    out$sentiment = plyr::rbind.fill(out$sentiment, df)
+
+    index = match(sentNames, names(df))
+    if (length(index) != ncol(df)) df = df[,index[!is.na(index)],drop=FALSE]
+    if (any(is.na(index))) df = fillDF(df, sentNames)
+
+    if (nrow(df)) out$sentiment = rbind(out$sentiment, df)
+  }
+
+  if (!is.null(out$token)) {
+    if (!is.na(index <- match("word", names(out$token))[1]))
+      names(out$token)[index] = "token"
+    if (sum(!is.na((index <- match(c("CharacterOffsetBegin","CharacterOffsetEnd"),names(out$token))))))
+      out$token[,index] = apply(out$token[,index,drop=FALSE],2,as.integer)
+  }
+
+  if (!is.null(out$basicDep)) {
+    if (sum(is.na((index <- match(c("governorIdx","dependentIdx"),names(out$basicDep))))))
+      out$basicDep[,index] = apply(out$basicDep[,index,drop=FALSE],2,as.integer)
+  }
+
+  if (!is.null(out$collapsedDep)) {
+    if (sum(!is.na((index <- match(c("governorIdx","dependentIdx"),names(out$collapsedDep))))))
+      out$collapsedDep[,index] = apply(out$collapsedDep[,index,drop=FALSE],2,as.integer)
+  }
+
+  if (!is.null(out$collapsedProcDep)) {
+    if (sum(!is.na((index <- match(c("governorIdx","dependentIdx"),names(out$collapsedProcDep))))))
+      out$collapsedProcDep[,index] = apply(out$collapsedProcDep[,index,drop=FALSE],2,as.integer)
   }
 
   if (!is.null(coref)) {
     coref = XML::xmlChildren(coref)
     for (corefId in 1:length(coref)) {
-      df = data.frame(corefId=corefId, XML::xmlToDataFrame(coref[[corefId]], stringsAsFactors=FALSE))
-      out$coref = plyr::rbind.fill(out$coref, df)
+      df = data.frame(corefId=corefId, XML::xmlToDataFrame(coref[[corefId]], stringsAsFactors=FALSE),
+                      stringsAsFactors=FALSE)
+
+      index = match(corefNames, names(df))
+      if (length(index) != ncol(df)) df = df[,index[!is.na(index)]]
+      if (any(is.na(index))) df = fillDF(df, corefNames)
+
+      out$coref = rbind(out$coref, df)
     }
   }
 
+  if (!is.null(out$sentiment)) {
+    if (sum(!is.na(index <- match(c("id","sentimentValue"),names(out$sentiment)))))
+      out$sentiment[,index[!is.na(index)]] = apply(out$sentiment[,index[!is.na(index)],drop=FALSE],2,as.integer)
+  }
 
   class(out) = "annotation"
   out
+}
+
+fillDF = function(df, nameVec) {
+  if (nrow(df) == 0L) return(df)
+  index = match(nameVec, names(df))
+  df[,nameVec[is.na(index)]] = NA
+  return(df)
 }
