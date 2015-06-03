@@ -33,12 +33,18 @@ volatiles = new.env(parent=emptyenv())
 #'                       is taken to be the list of annotators that you want to run. Either
 #'                       a length one character vector with annotator names seperated by
 #'                       commas, or a character vector with one annotator per element.
+#'@examples
+#'\dontrun{
+#'initCoreNLP()
+#'sIn <- "Mother died today. Or, maybe, yesterday; I can't be sure."
+#'annoObj <- annotateString(sIn)
+#'}
 #' @export
 initCoreNLP = function(libLoc, parameterFile, mem="4g", annotators) {
   # Find location of the CoreNLP Libraries
   if (missing(libLoc)) {
     libLoc = paste0(system.file("extdata",package="coreNLP"),
-                    "/stanford-corenlp-full-2015-01-29")
+                    "/stanford-corenlp-full-2015-04-20")
     if (!file.exists(libLoc))
       stop("Please run downloadCoreNLP() in order to install required jar files.")
   }
@@ -100,6 +106,12 @@ initCoreNLP = function(libLoc, parameterFile, mem="4g", annotators) {
 #' @param includeXSL  boolean. Whether the xml style sheet should be included
 #'                    in the output. Only used if format is \code{xml} and
 #'                    outputFile is not \code{NA}.
+#'@examples
+#'\dontrun{
+#'initCoreNLP()
+#'sIn <- "Mother died today. Or, maybe, yesterday; I can't be sure."
+#'annoObj <- annotateString(sIn)
+#'}
 #' @export
 annotateString = function(text, format=c("obj", "xml", "text"), outputFile=NA,
                           includeXSL=FALSE) {
@@ -126,7 +138,7 @@ annotateString = function(text, format=c("obj", "xml", "text"), outputFile=NA,
     if (format == "xml") out = xml else out = parseAnnoXML(xml)
   }
 
-  # Return the output if asked for asked for; otherwise just write to disk
+  # Return the output if asked for; otherwise just write to disk
   if (is.na(outputFile)) return(out)
   outputCon = file(outputFile, "w")
   on.exit(close(outputCon),add=TRUE)
@@ -209,6 +221,9 @@ annotateFile = function(file, format=c("obj", "xml", "text"), outputFile=NA,
 #' @param x    an annotation object
 #' @param ...  other arguments. Currently unused.
 #'
+#'@examples
+#'print(annoEtranger)
+#'
 #' @export
 print.annotation = function(x, ...) {
   cat("\nA CoreNLP Annotation:\n")
@@ -224,6 +239,10 @@ print.annotation = function(x, ...) {
 #' object.
 #'
 #' @param annotation    an annotation object
+#'
+#'@examples
+#'getToken(annoEtranger)
+#'
 #' @export
 getToken = function(annotation) {
   annotation$token
@@ -237,6 +256,10 @@ getToken = function(annotation) {
 #' conveniant for manipulating in R.
 #'
 #' @param annotation    an annotation object
+#'
+#'@examples
+#'getParse(annoEtranger)
+#'
 #' @export
 getParse = function(annotation) {
   annotation$parse
@@ -248,6 +271,11 @@ getParse = function(annotation) {
 #'
 #' @param annotation    an annotation object
 #' @param type          the class of coreference desired
+#'
+#'@examples
+#'getDependency(annoEtranger)
+#'getDependency(annoHp)
+#'
 #' @export
 getDependency = function(annotation, type=c("CCprocessed","basic","collapsed")) {
   type = match.arg(type)
@@ -267,6 +295,11 @@ getDependency = function(annotation, type=c("CCprocessed","basic","collapsed")) 
 #' Returns a data frame of the sentiment scores from an annotation
 #'
 #' @param annotation    an annotation object
+#'
+#'@examples
+#'getSentiment(annoEtranger)
+#'getSentiment(annoHp)
+#'
 #' @export
 getSentiment = function(annotation) {
   annotation$sentiment
@@ -277,6 +310,10 @@ getSentiment = function(annotation) {
 #' Returns a dataframe containing all coreferences detected in the text.
 #'
 #' @param annotation    an annotation object
+#'
+#'@examples
+#'getCoreference(annoHp)
+#'
 #' @export
 getCoreference = function(annotation) {
   coref = annotation$coref[,-grep("text",names(annotation$coref))]
@@ -316,6 +353,11 @@ loadXMLAnnotation = function(file, encoding="unknown") {
 #' a better cross-linguist model of speech.
 #'
 #' @param pennPOS   a character vector of penn tags to match
+#'
+#'@examples
+#'tok <- getToken(annoEtranger)
+#'cbind(tok$POS,universalTagset(tok$POS))
+#'
 #' @export
 universalTagset = function(pennPOS) {
   mtab = structure(c("!", "#", "$", "''", "(", ")", ",", "-LRB-",
@@ -382,7 +424,7 @@ parseAnnoXML = function(xml) {
 
     if (!is.null(sent[[3L]]) && length(XML::xmlToDataFrame(sent[[3L]]))) {
       df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[3L]],stringsAsFactors=FALSE),
-                type=sapply(XML::xmlChildren(sent[[3L]]),XML::xmlAttrs),
+                type=sapply(XML::xmlChildren(sent[[3L]]),function(v) XML::xmlAttrs(v)[[1]]),
                 governorIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
                 dependentIdx=sapply(XML::xmlChildren(sent[[3L]]), function(v) XML::xmlAttrs(v[[2]])[1]),
                 stringsAsFactors=FALSE)
@@ -396,7 +438,7 @@ parseAnnoXML = function(xml) {
 
     if (!is.null(sent[[4L]]) && length(XML::xmlToDataFrame(sent[[4L]]))) {
       df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[4L]],stringsAsFactors=FALSE),
-                type=sapply(XML::xmlChildren(sent[[4L]]),XML::xmlAttrs),
+                type=sapply(XML::xmlChildren(sent[[4L]]),function(v) XML::xmlAttrs(v)[[1]]),
                 governorIdx=sapply(XML::xmlChildren(sent[[4L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
                 dependentIdx=sapply(XML::xmlChildren(sent[[4L]]), function(v) XML::xmlAttrs(v[[2]])[1]))
 
@@ -409,7 +451,7 @@ parseAnnoXML = function(xml) {
 
     if (!is.null(sent[[5L]]) && length(XML::xmlToDataFrame(sent[[5L]]))) {
       df = data.frame(sentence=i, XML::xmlToDataFrame(sent[[5L]],stringsAsFactors=FALSE),
-                type=sapply(XML::xmlChildren(sent[[5L]]),XML::xmlAttrs),
+                type=sapply(XML::xmlChildren(sent[[5L]]),function(v) XML::xmlAttrs(v)[[1]]),
                 governorIdx=sapply(XML::xmlChildren(sent[[5L]]), function(v) XML::xmlAttrs(v[[1]])[1]),
                 dependentIdx=sapply(XML::xmlChildren(sent[[5L]]), function(v) XML::xmlAttrs(v[[2]])[1]))
 

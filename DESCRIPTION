@@ -1,14 +1,15 @@
 Package: coreNLP
 Type: Package
-Title: Wrappers around Stanford CoreNLP Tools
-Version: 0.3
-Author: Taylor Arnold
+Title: Wrappers Around Stanford CoreNLP Tools
+Version: 0.4-1
+Author: Taylor Arnold, Lauren Tilton
 Maintainer: Taylor Arnold <taylor.arnold@acm.org>
 Description: Provides a minimal interface for applying
- annotators from the Stanford CoreNLP java library. Methods
+ annotators from the 'Stanford CoreNLP' java library. Methods
  are provided for tasks such as tokenisation, part of speech
  tagging, lemmatisation, named entity recognition, coreference
- detection, and sentiment analysis.
+ detection and sentiment analysis.
+Imports: rJava, XML, plotrix
+SystemRequirements: Java (>= 7.0); Stanford CoreNLP <http://nlp.stanford.edu/software/corenlp.shtml> (>= 3.5.2)
 License: GPL-2
-SystemRequirements: java
-Imports: rJava, plyr, XML, plotrix
+LazyData: true
