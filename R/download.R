@@ -5,6 +5,9 @@
 #' This function downloads the libraries for you, by default into
 #' the directory where the package was installed.
 #'
+#' If you want to manually download files, simply unzip them and
+#' place in \code{system.file("extdata",package="coreNLP")}
+#'
 #' @param outputLoc      a string showing where the files are to be downloaded.
 #'                       If missing, will try to download files into the directory
 #'                       where the package was original installed.
