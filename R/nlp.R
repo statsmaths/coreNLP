@@ -44,7 +44,7 @@ initCoreNLP = function(libLoc, parameterFile, mem="4g", annotators) {
   # Find location of the CoreNLP Libraries
   if (missing(libLoc)) {
     libLoc = paste0(system.file("extdata",package="coreNLP"),
-                    "/stanford-corenlp-full-2015-04-20")
+                    "/stanford-corenlp-full-2015-12-09")
     if (!file.exists(libLoc))
       stop("Please run downloadCoreNLP() in order to install required jar files.")
   }

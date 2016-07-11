@@ -12,19 +12,20 @@
 #'                       If missing, will try to download files into the directory
 #'                       where the package was original installed.
 #' @param type           type of files to download. The base backage, installed by
-#'                       default is required. Other jars include chinese, spanish,
-#'                       and "shift reduce parser models". These will be installed
-#'                       in addition to the base package.
+#'                       default is required. Other jars include chinese, german,
+#'                       and spanish. These will be installed in addition to the
+#'                       base package.
 #'@examples
 #'\dontrun{
 #'downloadCoreNLP()
 #'downloadCoreNLP(type="spanish")
 #'}
 #' @export
-downloadCoreNLP = function(outputLoc, type=c("base","chinese","spanish","sr")) {
+downloadCoreNLP = function(outputLoc,
+    type=c("base","chinese","english", "french", "german", "spanish")) {
 
   baseURL = "http://nlp.stanford.edu/software/"
-  coreFile = "/stanford-corenlp-full-2015-04-20"
+  coreFile = "/stanford-corenlp-full-2015-12-09"
 
   type = match.arg(type)
   if (missing(outputLoc)) {
@@ -47,16 +48,24 @@ downloadCoreNLP = function(outputLoc, type=c("base","chinese","spanish","sr")) {
   if (!file.exists(paste0(outputLoc, "/", coreFile)))
     stop("Must download base files to this location first! Set type='base'.")
 
-  if (type == "spanish")
-    download.file(paste0(baseURL, "/stanford-spanish-corenlp-2015-01-08-models.jar"),
-      destfile=paste0(outputLoc, coreFile, "/stanford-spanish-corenlp-2015-01-08-models.jar"))
-
   if (type == "chinese")
-    download.file(paste0(baseURL, "/stanford-chinese-corenlp-2015-04-20-models.jar"),
-      destfile=paste0(outputLoc, coreFile, "/stanford-chinese-corenlp-2015-04-20-models.jar"))
+    download.file(paste0(baseURL, "/stanford-chinese-corenlp-2016-01-19-models.jar"),
+      destfile=paste0(outputLoc, coreFile, "/stanford-chinese-corenlp-2016-01-19-models.jar"))
 
-  if (type == "sr")
-    download.file(paste0(baseURL, "stanford-srparser-2014-10-23-models.jar"),
-      destfile=paste0(outputLoc, coreFile, "/stanford-srparser-2014-10-23-models.jar"))
+  if (type == "english")
+    download.file(paste0(baseURL, "/stanford-english-corenlp-2016-01-10-models.jar"),
+      destfile=paste0(outputLoc, coreFile, "/stanford-english-corenlp-2016-01-10-models.jar"))
+
+  if (type == "french")
+    download.file(paste0(baseURL, "/stanford-french-corenlp-2016-01-14-models.jar"),
+      destfile=paste0(outputLoc, coreFile, "/stanford-french-corenlp-2016-01-14-models.jar"))
+
+  if (type == "german")
+    download.file(paste0(baseURL, "/stanford-german-corenlp-2016-01-19-models.jar"),
+      destfile=paste0(outputLoc, coreFile, "/stanford-german-corenlp-2016-01-19-models.jar"))
+
+  if (type == "spanish")
+    download.file(paste0(baseURL, "/stanford-spanish-corenlp-2015-10-14-models.jar"),
+      destfile=paste0(outputLoc, coreFile, "/stanford-spanish-corenlp-2015-10-14-models.jar"))
 
 }

@@ -5,11 +5,16 @@ Version: 0.4-1
 Author: Taylor Arnold, Lauren Tilton
 Maintainer: Taylor Arnold <taylor.arnold@acm.org>
 Description: Provides a minimal interface for applying
- annotators from the 'Stanford CoreNLP' java library. Methods
- are provided for tasks such as tokenisation, part of speech
- tagging, lemmatisation, named entity recognition, coreference
- detection and sentiment analysis.
-Imports: rJava, XML, plotrix
-SystemRequirements: Java (>= 7.0); Stanford CoreNLP <http://nlp.stanford.edu/software/corenlp.shtml> (>= 3.5.2)
+    annotators from the 'Stanford CoreNLP' java library. Methods
+    are provided for tasks such as tokenisation, part of speech
+    tagging, lemmatisation, named entity recognition, coreference
+    detection and sentiment analysis.
+Imports:
+    rJava,
+    XML,
+    plotrix
+SystemRequirements: Java (>= 7.0); Stanford CoreNLP <http://nlp.stanford.edu/
+    software/corenlp.shtml> (>= 3.5.2)
 License: GPL-2
 LazyData: true
+RoxygenNote: 5.0.1
