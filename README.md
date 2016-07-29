@@ -1,16 +1,15 @@
 # coreNLP
-To download the R library and corresponding CoreNLP java library, 
+To download the R library and corresponding CoreNLP java library,
 run the following in R:
 ```{r}
 devtools::install_github("statsmaths/coreNLP")
-download.file("http://nlp.stanford.edu/software/stanford-corenlp-full-2015-01-29.zip")
-unzip("stanford-corenlp-full-2015-01-29.zip")
+coreNLP::downloadCoreNLP()
 ```
 Then, in order to run the package, the following code initializes
 rJava correctly (if run from the same directory as the above):
 ```{r}
 library(coreNLP)
-initCoreNLP("stanford-corenlp-full-2015-01-29")
+initCoreNLP()
 ```
 As a simple example of usage, this how to annotate the opening lines
 to "The Cat in the Hat":

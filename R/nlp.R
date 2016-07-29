@@ -30,10 +30,6 @@ volatiles = new.env(parent=emptyenv())
 #'                       "1800m" may also work. This option will only have an effect the first
 #'                       time \code{initCoreNLP} is called, and also will not have an effect if
 #'                       the java engine is already started by a seperate process.
-#' @param annotators     optional character string. When parameterFile is missing, this
-#'                       is taken to be the list of annotators that you want to run. Either
-#'                       a length one character vector with annotator names seperated by
-#'                       commas, or a character vector with one annotator per element.
 #'@examples
 #'\dontrun{
 #'initCoreNLP()
@@ -42,7 +38,7 @@ volatiles = new.env(parent=emptyenv())
 #'}
 #' @export
 initCoreNLP = function(libLoc, type = c("english", "english_fast", "arabic", "chinese", "french", "german", "spanish"),
-      parameterFile, mem="4g", annotators) {
+      parameterFile = NULL, mem = "4g") {
   # Find location of the CoreNLP Libraries
   if (missing(libLoc)) {
     libLoc = paste0(system.file("extdata",package="coreNLP"),
@@ -67,7 +63,7 @@ initCoreNLP = function(libLoc, type = c("english", "english_fast", "arabic", "ch
     warning("The set of coreNLP jar files may be incomplete. Proceed with caution")
 
   # Read parameter file and add to classpath
-  if (!is.null(parameterFile)) {
+  if (is.null(parameterFile)) {
     type = match.arg(type)
     basepath = system.file("extdata",package="coreNLP")
     if (type == "english") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP.properties")
@@ -86,15 +82,7 @@ initCoreNLP = function(libLoc, type = c("english", "english_fast", "arabic", "ch
   if (!is.null(volatiles$cNLP))
     rJava::.jcall(volatiles$cNLP, "V", "clearAnnotatorPool")
 
-  if (!missing(annotators) & missing(parameterFile)) {
-    annotators = paste(annotators,collapse=",")
-    prop = rJava::.jnew("java.util.Properties")
-    rJava::.jcall(prop, "Ljava/lang/Object;", "setProperty", "annotators", annotators)
-    volatiles$cNLP = rJava::.jnew("edu.stanford.nlp.pipeline.StanfordCoreNLP", prop)
-  } else {
-    volatiles$cNLP = rJava::.jnew("edu.stanford.nlp.pipeline.StanfordCoreNLP", basename(path))
-  }
-
+  volatiles$cNLP = rJava::.jnew("edu.stanford.nlp.pipeline.StanfordCoreNLP", basename(path))
   volatiles$xmlOut = rJava::.jnew("edu.stanford.nlp.pipeline.XMLOutputter")
 }
 
