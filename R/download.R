@@ -8,6 +8,7 @@
 #' If you want to manually download files, simply unzip them and
 #' place in \code{system.file("extdata",package="coreNLP")}
 #'
+#' @importFrom        utils download.file unzip
 #' @param outputLoc      a string showing where the files are to be downloaded.
 #'                       If missing, will try to download files into the directory
 #'                       where the package was original installed.

@@ -18,6 +18,7 @@ volatiles = new.env(parent=emptyenv())
 #'                       version number. If missing, the function will try to find the
 #'                       library in the environment variable CORENLP_HOME, and otherwise
 #'                       will fail.
+#' @param type           type of model to load. Ignored if parameterFile is set.
 #' @param parameterFile  the path to a parameter file. See the CoreNLP documentation for
 #'                       an extensive list of options. If missing, the package will simply
 #'                       specify a list of standard annotators and otherwise only use default
@@ -40,7 +41,8 @@ volatiles = new.env(parent=emptyenv())
 #'annoObj <- annotateString(sIn)
 #'}
 #' @export
-initCoreNLP = function(libLoc, parameterFile, mem="4g", annotators) {
+initCoreNLP = function(libLoc, type = c("english", "english_fast", "arabic", "chinese", "french", "german", "spanish"),
+      parameterFile, mem="4g", annotators) {
   # Find location of the CoreNLP Libraries
   if (missing(libLoc)) {
     libLoc = paste0(system.file("extdata",package="coreNLP"),
@@ -65,9 +67,20 @@ initCoreNLP = function(libLoc, parameterFile, mem="4g", annotators) {
     warning("The set of coreNLP jar files may be incomplete. Proceed with caution")
 
   # Read parameter file and add to classpath
-  if (missing(parameterFile)) {
-    path = paste0(system.file("extdata",package="coreNLP"),"/config.properties")
-  } else path = Sys.glob(paste0(parameterFile[[1]]))
+  if (!is.null(parameterFile)) {
+    type = match.arg(type)
+    basepath = system.file("extdata",package="coreNLP")
+    if (type == "english") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP.properties")
+    if (type == "english_all") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP-english-all.properties")
+    if (type == "english_fast") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP-english-fast.properties")
+    if (type == "arabic") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP-arabic.properties")
+    if (type == "chinese") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP-chinese.properties")
+    if (type == "french") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP-french.properties")
+    if (type == "german") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP-german.properties")
+    if (type == "spanish") path = sprintf("%s/%s", basepath, "/StanfordCoreNLP-spanish.properties")
+  } else {
+    path = Sys.glob(paste0(parameterFile[[1]]))
+  }
   rJava::.jaddClassPath(dirname(path))
 
   if (!is.null(volatiles$cNLP))
