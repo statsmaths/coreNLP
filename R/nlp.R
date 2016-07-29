@@ -416,6 +416,7 @@ parseAnnoXML = function(xml) {
     index = match(tokenNames, names(df))
     if (length(index) != ncol(df)) df = df[,index[!is.na(index)]]
     if (any(is.na(index))) df = fillDF(df, tokenNames)
+    df = df[,tokenNames]
 
     out$token = rbind(out$token, df)
 
