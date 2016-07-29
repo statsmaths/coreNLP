@@ -1,7 +1,7 @@
 Package: coreNLP
 Type: Package
 Title: Wrappers Around Stanford CoreNLP Tools
-Version: 0.4-1
+Version: 0.4-2
 Author: Taylor Arnold, Lauren Tilton
 Maintainer: Taylor Arnold <taylor.arnold@acm.org>
 Description: Provides a minimal interface for applying
@@ -11,8 +11,7 @@ Description: Provides a minimal interface for applying
     detection and sentiment analysis.
 Imports:
     rJava,
-    XML,
-    plotrix
+    XML
 SystemRequirements: Java (>= 7.0); Stanford CoreNLP <http://nlp.stanford.edu/
     software/corenlp.shtml> (>= 3.5.2)
 License: GPL-2
