@@ -4,8 +4,9 @@
 \alias{initCoreNLP}
 \title{Initialize the CoreNLP java object}
 \usage{
-initCoreNLP(libLoc, type = c("english", "english_fast", "arabic", "chinese",
-  "french", "german", "spanish"), parameterFile = NULL, mem = "4g")
+initCoreNLP(libLoc, type = c("english", "english_all", "english_fast",
+  "arabic", "chinese", "french", "german", "spanish"), parameterFile = NULL,
+  mem = "4g")
 }
 \arguments{
 \item{libLoc}{a string giving the location of the CoreNLP java
