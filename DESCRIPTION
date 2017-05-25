@@ -1,7 +1,7 @@
 Package: coreNLP
 Type: Package
 Title: Wrappers Around Stanford CoreNLP Tools
-Version: 0.4-2
+Version: 0.4-3
 Author: Taylor Arnold, Lauren Tilton
 Maintainer: Taylor Arnold <taylor.arnold@acm.org>
 Description: Provides a minimal interface for applying
