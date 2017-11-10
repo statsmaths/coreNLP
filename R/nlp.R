@@ -408,6 +408,11 @@ parseAnnoXML = function(xml) {
   xml = xml[[1]]
   sentences = XML::xmlChildren(xml)
 
+  # exception handler: if coref resolution does not exist
+  if (is.null(XML::xmlToList(coref))) {
+    coref = NULL
+  }    
+      
   out = list(token = NULL,parse = NULL,basicDep = NULL,collapsedDep = NULL,
               collapsedProcDep = NULL, coref = NULL, openie = NULL)
 
